@@ -26,7 +26,7 @@ def is_sum_of_extended_pdfs(model) -> bool:
     return all(m.is_extended for m in model.get_models()) and model.is_extended
 
 
-def compute_sweights(model, x: np.ndarray, *, atol_exceptions: float | None = None) -> dict[Any, np.ndarray]:
+def compute_sweights(model, x: np.ndarray, *, atol_exceptions: float | list | None = None) -> dict[Any, np.ndarray]:
     """Computes sWeights from probability density functions for different components/species in a fit model
     (for instance signal and background) fitted on some data `x`.
 
@@ -110,10 +110,12 @@ def compute_sweights(model, x: np.ndarray, *, atol_exceptions: float | None = No
     pN = p / Nx[:, None]
 
     MLSR = pN.sum(axis=0)
+    print(f"{MLSR = }")
+
     atol_warning = 5e-3
     if atol_exceptions is None:
         atol_exceptions = 5e-2
-
+    
     def msg_fn(tolerance):
         msg = (
             "The Maximum Likelihood Sum Rule sanity check, described in equation 17 of"
@@ -124,13 +126,20 @@ def compute_sweights(model, x: np.ndarray, *, atol_exceptions: float | None = No
         msg += f"should be equal to 1.0 with an absolute tolerance of {tolerance}."
         return msg
 
-    if not np.allclose(MLSR, 1, atol=atol_exceptions):
-        msg = msg_fn(atol_exceptions)
+    warning = not np.allclose(MLSR, 1, atol=atol_warning)
+    
+    if isinstance(atol_exceptions, list):
+        error = not np.all([np.allclose(elt, 1, tol) for elt, tol in zip(MLSR, atol_exceptions)])
+    elif isinstance(atol_exceptions, float):
+        error = not np.allclose(MLSR, 1, atol=atol_exceptions)
+
+    if warning:
+        msg = msg_fn(atol_warning)
         msg += " The numbers suggest that the model is not fitted to the data. Please check your fit."
         raise ModelNotFittedToData(msg)
 
-    if not np.allclose(MLSR, 1, atol=atol_warning):
-        msg = msg_fn(atol_warning)
+    if error:
+        msg = msg_fn(atol_exceptions)
         msg += " If the fit to the data is good please ignore this warning."
         warnings.warn(msg, AboveToleranceWarning, stacklevel=2)
 
