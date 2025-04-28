@@ -131,7 +131,7 @@ def compute_sweights(model, x: np.ndarray, *, atol_exceptions: float | list | No
 
     warning = not np.allclose(MLSR, 1, atol=atol_warning)
     
-    if isinstance(atol_exceptions, list):
+    if isinstance(atol_exceptions, (list, np.ndarray)):
         error = not np.all([np.allclose(elt, 1, tol) for elt, tol in zip(MLSR, atol_exceptions)])
     elif isinstance(atol_exceptions, float):
         error = not np.allclose(MLSR, 1, atol=atol_exceptions)
